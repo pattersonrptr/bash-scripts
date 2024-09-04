@@ -1,0 +1,5 @@
+# !/bin/bash
+
+
+ls -c1 ~/.local/bin
+

@@ -1,0 +1,89 @@
+#!/bin/bash
+
+
+
+# TODO: melhorar recebimento de parâmetros
+# TODO: melhorar/implementar tratamento de parâmetros
+# TODO: melhorar tratamento de erros
+
+BASE_URL="http://worldtimeapi.org/api"
+
+show_help() {
+    echo "Usage: tmz [options] [location,...]"
+    echo
+    echo "Options:"
+    echo "  -h, --help          Show this help message and exit"
+    echo
+    echo "Arguments:"
+    echo "  location            A comma-separated list of locations in the format 'Area/City'"
+    echo
+    echo "Examples:"
+    echo "  tmz                 Show the current date and time for the user's IP location"
+    echo "  tmz America/New_York,Europe/London"
+    echo "                      Show the current date and time for New York and London"
+}
+
+get_timezone_data_by_ip() {
+    echo $(curl -s "$BASE_URL/ip")
+}
+
+get_timezone_data() {
+    local location="$1"
+    echo $(curl -s "$BASE_URL/timezone/$location")
+}
+
+format_date() {
+    local iso_datetime="$1"
+
+    date_part=$(echo "$iso_datetime" | awk -F'T' '{print $1}')
+    time_part=$(echo "$iso_datetime" | awk -F'T' '{print $2}' | awk -F'-' '{print $1}')
+
+    year=$(echo "$date_part" | awk -F'-' '{print $1}')
+    month=$(echo "$date_part" | awk -F'-' '{print $2}')
+    day=$(echo "$date_part" | awk -F'-' '{print $3}')
+
+    hour=$(echo "$time_part" | awk -F':' '{print $1}')
+    minute=$(echo "$time_part" | awk -F':' '{print $2}')
+    second=$(echo "$time_part" | awk -F':' '{print $3}' | awk -F'.' '{print $1}')
+
+    echo "${day}/${month}/${year} ${hour}:${minute}:${second}"
+}
+
+get_datetime() {
+    local datetime=$(echo "$response" | jq -r '.datetime')
+    echo $(format_date "$datetime")
+}
+
+get_utc_datetime() {
+    echo "$response" | jq -r '.utc_datetime'
+}
+
+if [ $# -eq 0 ]; then
+    response=$(get_timezone_data_by_ip)
+
+    if [ -n "$response" ]; then
+        datetime=$(get_datetime)
+        echo "$datetime"
+    else
+        show_help
+        exit 1
+    fi
+elif [ "$1" == "-h" ] || [ "$1" == "--help" ]; then
+    show_help
+    exit 0
+else
+    IFS=',' read -ra locations <<< "$1"
+
+    for location in "${locations[@]}"; do
+        response=$(get_timezone_data "$location")
+
+        if [ -n "$response" ]; then
+            datetime=$(get_datetime)
+            echo "$datetime"
+        else
+            echo "Invalid location: $location"
+            show_help
+            exit 1
+        fi
+    done
+fi

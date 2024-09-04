@@ -1,0 +1,7 @@
+# !/bin/bash
+
+# Não use acentos nos nomes das cidades
+# Para cidades com nome composto use underline, ex: Sao_Paulo
+
+curl "http://wttr.in/$1?lang=pt"
+
