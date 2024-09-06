@@ -1,0 +1,42 @@
+#!/bin/bash
+
+function help() {
+  echo "Usage: $0 [-h] [country_name]"
+  echo "  -h, --help    Show this help."
+  echo "  country_name  See holidays for another country. If omitted, uses the current country."
+}
+
+if [[ $1 == "-h" || $1 == "--help" ]]; then
+  help
+  exit 0
+fi
+
+get_country_code() {
+  if [ -z "$1" ]; then
+    current_country=$(curl -s https://ipinfo.io | grep -Po '"country":\s*"\K[A-Z]{2}')
+    echo "$current_country"
+  else
+    country_name=$1
+    country_code=$(curl -s https://restcountries.com/v3.1/name/"$country_name" | grep -Po '"cca2":\s*"\K[A-Z]{2}')
+    echo "$country_code"
+  fi
+}
+
+country_code=$(get_country_code "$1")
+
+if [ -z "$country_code" ]; then
+  echo "Error: Unable to determine the country code."
+  exit 1
+fi
+
+YEAR=$(date +%Y)
+
+response=$(curl -s "https://date.nager.at/api/v3/publicholidays/$YEAR/$country_code")
+
+if [ -z "$response" ]; then
+  echo "Error: Unable to retrieve holidays."
+  exit 1
+fi
+
+echo "Holidays in the country with code '$country_code':"
+echo "$response" | jq '.[] | "\(.date) - \(.localName)"'
